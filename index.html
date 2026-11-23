@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="theme-color" content="#106373" />
+  <title>Batomon Showdown Planner</title>
+  <link rel="preload" href="assets/fonts/Guilty_Treasure.otf?v=eae78ad0" as="font" type="font/otf" crossorigin />
+  <link rel="preload" href="assets/fonts/Primary_School.otf?v=2bf8ca27" as="font" type="font/otf" crossorigin />
+  <style>
+    /* game fonts and 9-slice textures (paths here so tools/app/stamp_cache.py versions them) */
+    @font-face { font-family: "Guilty Treasure"; src: url('assets/fonts/Guilty_Treasure.otf?v=eae78ad0') format("opentype"); font-display: optional; }
+    @font-face { font-family: "Primary School"; src: url('assets/fonts/Primary_School.otf?v=2bf8ca27') format("opentype"); font-display: optional; }
+    @font-face { font-family: "Picory"; src: url('assets/fonts/ChevyRay_-_Picory.ttf?v=bab37d1a') format("truetype"); font-display: optional; }
+    :root {
+      --t-panel: url('assets/ui/panel_container_bg.png?v=2d56b777');
+      --t-section: url('assets/ui/section_panel_bg.png?v=28f280e2');
+      --t-inner: url('assets/ui/section_inner_panel_bg.png?v=9109e4df');
+      --t-highlight: url('assets/ui/highlighted_panel_container.png?v=06da4917');
+      --t-frame: url('assets/ui/rarity_frame.png?v=a996f6ff');
+      --t-team: url('assets/ui/shop_team_panel_bg.png?v=4f86fccd');
+      --t-bench: url('assets/ui/shop_bench_panel_bg.png?v=1c34fe28');
+      --t-slot: url('assets/ui/shop_monster_slot_bg.png?v=a839b8b0');
+      --t-hud: url('assets/ui/top_hud_panel.png?v=fd34e92c');
+      --t-bg: url('assets/ui/shop_bg.png?v=159a8cac');
+      --t-selector: url('assets/ui/selector.png?v=b298ad5c');
+      --t-btn-blue: url('assets/ui/button_blue_normal.png?v=7754325c');
+      --t-btn-blue-p: url('assets/ui/button_blue_pressed.png?v=8e059c50');
+      --t-btn-red: url('assets/ui/button_red_normal.png?v=c5073755');
+      --t-btn-red-p: url('assets/ui/button_red_pressed.png?v=14b602cd');
+      --t-btn-yellow: url('assets/ui/button_yellow_normal.png?v=dd8be2f7');
+      --t-btn-yellow-p: url('assets/ui/button_yellow_pressed.png?v=0f869c02');
+      --t-lv-on: url('assets/ui/dex_level_button_on.png?v=d3e4ce2a');
+      --t-lv-off: url('assets/ui/dex_level_button_off.png?v=c9eaff3e');
+      --t-tog-on: url('assets/ui/toggle_button_blue_on.png?v=4e7fcf03');
+      --t-tog-off: url('assets/ui/toggle_button_off.png?v=c9eaff3e');
+      --t-type-shadow: url('assets/ui/type_bg_shadow.png?v=4dc017d1');
+      --t-grab: url('assets/ui/scroll_bar_grabber.png?v=f37b0420');
+      --t-under: url('assets/ui/scroll_bar_under.png?v=0675d7fa');
+    }
+  </style>
+  <link rel="stylesheet" href="styles.css?v=764c1ee7" />
+</head>
+<body>
+  <div id="app"></div>
+  <div id="overlay-root" class="hidden"></div>
+  <div id="detail-overlay-root" class="hidden"></div>
+  <script src="data.js?v=21e44451"></script>
+  <script src="app.js?v=57b9a874" defer></script>
+  <script>
+    if ("serviceWorker" in navigator && location.protocol === "https:") {
+      addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
+      let reloading = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (reloading) return;
+        reloading = true;
+        location.reload();
+      });
+      navigator.serviceWorker.ready.then((reg) => {
+        (reg.active || navigator.serviceWorker.controller)?.postMessage({ type: "precache" });
+      });
+    }
+  </script>
+  <!-- Cloudflare Web Analytics: INERT until public release (rule A-analytics).
+  <script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "b5abb0125b524ee8a96efbe9899114a4"}'></script>
+  -->
+</body>
+</html>
