@@ -48,10 +48,16 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   border-image: var(--t-section) 6 fill / calc(6 * var(--u)) stretch; }
 .inner { border: solid transparent; border-width: calc(4 * var(--u)) calc(5 * var(--u)) calc(5 * var(--u)) calc(4 * var(--u));
   border-image: var(--t-inner) 4 5 5 4 fill / calc(4 * var(--u)) calc(5 * var(--u)) calc(5 * var(--u)) calc(4 * var(--u)) stretch; }
-.team-panel { border: solid transparent; border-width: calc(7 * var(--u)) calc(6 * var(--u)) calc(6 * var(--u));
-  border-image: var(--t-team) 7 6 6 fill / calc(7 * var(--u)) calc(6 * var(--u)) calc(6 * var(--u)) stretch; }
-.bench-panel { border: solid transparent; border-width: calc(4 * var(--u)) calc(6 * var(--u)) calc(6 * var(--u));
-  border-image: var(--t-bench) 4 6 6 fill / calc(4 * var(--u)) calc(6 * var(--u)) calc(6 * var(--u)) stretch; }
+/* headed panel (monster_team_ui.tscn, trainer_ui.tscn): panel_container 9-slice, 1 px margin, VBox separation 2, a
+   full-width header PanelContainer (header_red/yellow_panel.tres, margins 4 1 4 2) holding a small_header Label:
+   Guilty Treasure 12, white, 1 px shadow #404040, one line = 13 px (font ascent + descent) */
+.hpanel { display: flex; flex-direction: column; gap: calc(2 * var(--u)); padding: var(--u); }
+.hdr { display: flex; align-items: center; min-height: calc(16 * var(--u)); font-family: var(--font); font-size: calc(12 * var(--u));
+  line-height: calc(13 * var(--u)); text-transform: uppercase; color: #fff; text-shadow: var(--u) var(--u) 0 #404040;
+  overflow-wrap: anywhere; border: solid transparent; border-width: var(--u) calc(4 * var(--u)) calc(2 * var(--u));
+  border-image: var(--t-hdr-red) 1 4 2 fill / var(--u) calc(4 * var(--u)) calc(2 * var(--u)) stretch; }
+.hdr.yellow { border-image-source: var(--t-hdr-yellow); }
+.hdr.tall { min-height: calc(17 * var(--u)); }
 .btn { display: inline-flex; align-items: center; justify-content: center; min-height: calc(20 * var(--u));
   padding: 0 calc(4 * var(--u)); font-family: var(--font-head); font-size: calc(9 * var(--u)); color: #fff;
   text-shadow: var(--u) var(--u) 0 var(--head-shadow);
@@ -80,15 +86,20 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .setsw { display: flex; gap: var(--u); }
 .wrap { max-width: calc(330 * var(--u)); margin: 0 auto; padding: calc(4 * var(--u)) calc(4 * var(--u))
   calc(env(safe-area-inset-bottom) + 12 * var(--u)); display: flex; flex-direction: column; gap: calc(4 * var(--u)); }
-.ptitle { font-family: var(--font-head); font-size: calc(9 * var(--u)); color: #fff; text-shadow: var(--u) var(--u) 0 var(--head-shadow);
-  margin: calc(-6 * var(--u)) 0 calc(3 * var(--u)); height: calc(7 * var(--u)); line-height: calc(7 * var(--u)); }
-.trainer-row { display: flex; gap: calc(4 * var(--u)); align-items: center; }
-.face { display: block; width: calc(40 * var(--u)); height: calc(40 * var(--u)); flex: none; overflow: hidden; position: relative;
-  background: var(--paper-2); }
-.face img { position: absolute; width: calc(320 * var(--u)); height: auto; }
-.trainer-row .tt { flex: 1; min-width: 0; }
-.trainer-row .tn { font-family: var(--font-head); font-size: calc(9 * var(--u)); color: var(--gold); }
-.board { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(3 * var(--u)); position: relative; }
+/* trainer card (trainer_ui.tscn): header, portrait, description; the portrait sits beside the text when there is room */
+.trainer-body { display: flex; flex-wrap: wrap; gap: calc(2 * var(--u)); }
+.trainer-body .desc { flex: 1 1 calc(116 * var(--u)); display: flex; align-items: center; justify-content: center; min-height: calc(84 * var(--u)); }
+/* trainer_portrait.gd Kind.LARGE: a 120x80 crop of the full sprite (region from build_data.py), drawn 1:1 in a
+   trainer_portrait_frame 9-slice (margin 3); clip-path = portrait_corner_clip.gdshader (one texel off each corner) */
+.portrait { flex: none; align-self: flex-start; border: solid transparent; border-width: calc(3 * var(--u));
+  border-image: var(--t-portrait) 3 fill / calc(3 * var(--u)) stretch; }
+.face { display: block; position: relative; overflow: hidden; width: calc(120 * var(--u)); height: calc(80 * var(--u));
+  clip-path: polygon(var(--u) 0, calc(100% - var(--u)) 0, calc(100% - var(--u)) var(--u), 100% var(--u), 100% calc(100% - var(--u)),
+    calc(100% - var(--u)) calc(100% - var(--u)), calc(100% - var(--u)) 100%, var(--u) 100%, var(--u) calc(100% - var(--u)),
+    0 calc(100% - var(--u)), 0 var(--u), var(--u) var(--u)); }
+.face img { position: absolute; max-width: none; height: auto; }
+.face.empty { display: flex; align-items: center; justify-content: center; font-family: var(--font-head); font-size: calc(16 * var(--u)); color: var(--grey); }
+.board { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(4 * var(--u)); position: relative; }
 .slot { position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
   background: var(--t-slot) center / 100% 100% no-repeat; }
 .slot > img.mon { width: 80%; height: 80%; object-fit: contain; }
@@ -101,7 +112,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   border-image: var(--t-selector) 8 / calc(8 * var(--u)) stretch; }
 .slot.dim > img.mon { filter: grayscale(1) opacity(.45); }
 .front { position: absolute; right: 0; top: calc(-8 * var(--u)); font-size: calc(8 * var(--u)); color: var(--grey); }
-.shelf { display: flex; flex-wrap: wrap; gap: calc(2 * var(--u)); }
+.shelf { display: flex; flex-wrap: wrap; gap: calc(4 * var(--u)); }
 .tk { width: calc(32 * var(--u)); height: calc(32 * var(--u)); display: flex; align-items: center; justify-content: center; }
 .tk img { width: 100%; height: 100%; }
 .tk.add { font-family: var(--font-head); font-size: calc(14 * var(--u)); color: var(--grey); }
@@ -113,7 +124,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .lk-group.off .lk { opacity: .6; }
 .lk .arr { color: var(--grey); }
 .lk .from { display: inline-flex; flex-wrap: wrap; gap: calc(2 * var(--u)); }
-.facebtn { flex: none; }
+.facebtn { display: block; width: 100%; text-align: left; }
 .chip { display: inline-flex; align-items: center; gap: var(--u); }
 .chip img { width: calc(16 * var(--u)); height: calc(16 * var(--u)); object-fit: contain; }
 .fits { display: flex; flex-wrap: wrap; gap: calc(2 * var(--u)); }
@@ -165,6 +176,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .tip-gfx { display: flex; gap: calc(3 * var(--u)); align-items: center; }
 .tip-gfx .spr { width: calc(48 * var(--u)); height: calc(48 * var(--u)); flex: none; display: flex; align-items: center; justify-content: center; }
 .tip-gfx .spr img { width: 100%; height: 100%; object-fit: contain; }
+.tip-gfx.art { justify-content: center; }
+.tip-gfx.art .spr { width: 100%; max-width: calc(320 * var(--u)); height: auto; }
+.tip-gfx.art .spr img { height: auto; }
 .types { display: flex; flex-direction: column; gap: var(--u); }
 .tlabel { width: calc(40 * var(--u)); height: calc(15 * var(--u)); display: inline-flex; align-items: center; justify-content: center;
   font-size: calc(10 * var(--u)); text-transform: uppercase; color: #fff; text-shadow: var(--u) var(--u) 0 #404040;

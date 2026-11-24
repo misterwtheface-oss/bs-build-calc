@@ -1,5 +1,5 @@
 {
-"version": "ac937351",
+"version": "5a5b82ab",
 "assets": [
 "assets/fonts/ChevyRay_-_Picory.ttf",
 "assets/fonts/Guilty_Treasure.otf",
@@ -504,13 +504,12 @@
 "assets/ui/section_inner_panel_bg.png",
 "assets/ui/section_panel_bg.png",
 "assets/ui/selector.png",
-"assets/ui/shop_bench_panel_bg.png",
 "assets/ui/shop_bg.png",
 "assets/ui/shop_monster_slot_bg.png",
-"assets/ui/shop_team_panel_bg.png",
 "assets/ui/toggle_button_blue_on.png",
 "assets/ui/toggle_button_off.png",
 "assets/ui/top_hud_panel.png",
+"assets/ui/trainer_portrait_frame.png",
 "assets/ui/type_bg_shadow.png",
 "assets/ui/types/all.png",
 "assets/ui/types/bug.png",

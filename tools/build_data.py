@@ -32,9 +32,10 @@ UI = ["common/panel_container_bg.png", "common/section_panel_bg.png", "common/se
       "common/toggle_button_blue_on.png", "common/toggle_button_off.png", "common/selector.png",
       "common/scroll_bar_grabber.png", "common/scroll_bar_under.png", "common/x_icon.png",
       "tooltip/rarity_frame.png", "tooltip/type_label_bgs/type_bg_shadow.png",
-      "shop/shop_bg.png", "shop/top_hud_panel.png", "shop/shop_team_panel_bg.png", "shop/shop_bench_panel_bg.png",
+      "shop/shop_bg.png", "shop/top_hud_panel.png",
       "shop/shop_monster_slot_bg.png", "shop/team_slot_arrows/above_arrow.png",
-      "board_markers/crest_marker.png", "board_markers/crown_marker.png", "board_markers/flag_marker.png"]
+      "board_markers/crest_marker.png", "board_markers/crown_marker.png", "board_markers/flag_marker.png",
+      "trainer_description/trainer_portrait_frame.png"]
 RARITY = ["common", "uncommon", "rare", "super_rare", "legendary", "mythic"]
 RARITY_COLORS = ["#70707a", "#4ab500", "#0084bd", "#a040a0", "#d47c00", "#dc2844"]  # utils/glossary.gd RARITY_COLORS
 FONTS = ["Guilty Treasure.otf", "Primary School.otf", "ChevyRay - Picory.ttf"]
@@ -129,9 +130,23 @@ def main():
 
     trinkets = held("trinket", E["trinkets"], "trinkets")
     items = held("item", E["items"], "items")
-    trainers = [{"id": t["id"], "name": t["name"], "text": t["text"], "src": t["src"], "sets": t["sets"],
-                 "pool": t["in_pool"], "img": copy(t["sprite"], "trainers/%s.png" % t["id"]),
-                 "face": t["mugshot_center"]} for t in E["trainers"]]
+    def mugshot(t):
+        """game/trainers/trainer_portrait.gd region_for(Kind.LARGE): a 120x80 window centred on mugshot_center,
+        clamped inside the full sprite (UNSET centre -> x centre, top) -> [x, y, w, h] in sprite pixels, [sprite w, h]"""
+        w, h = 120, 80
+        sw, sh = Image.open(os.path.join(REC, t["sprite"].replace("res://", ""))).size
+        cx, cy = t["mugshot_center"]
+        if (cx, cy) == (-1, -1):
+            warnings.append("trainer %s has no mugshot_center" % t["id"])
+            cx, cy = sw // 2, h // 2
+        return [min(max(cx - w // 2, 0), max(0, sw - w)), min(max(cy - h // 2, 0), max(0, sh - h)), w, h], [sw, sh]
+
+    trainers = []
+    for t in E["trainers"]:
+        crop, size = mugshot(t)
+        trainers.append({"id": t["id"], "name": t["name"], "text": t["text"], "src": t["src"], "sets": t["sets"],
+                         "pool": t["in_pool"], "img": copy(t["sprite"], "trainers/%s.png" % t["id"]),
+                         "crop": crop, "size": size})
 
     # effects: id -> [unit, variant, facets[[facet, ch, scope, gate|0, implicit|0, src]]]
     effects = {}

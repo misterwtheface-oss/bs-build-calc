@@ -178,7 +178,8 @@ function tooltip(key, lv = 1, shiny = false) {
       text = r.ab.text + " " + (r.shiny.ab.text.startsWith("Same") ? "" : r.shiny.ab.text);
   } else {
     const label = u.kind === "trainer" ? "" : `<span class="tlabel" style="background-image:url(${D.ui["type_" + u.kind] || D.ui.type_trinket})">${u.kind}</span>`;
-    gfx = `<div class="tip-gfx section"><div class="spr inner">${img(r.img, "", r.name)}</div><div class="types">${label}</div></div>`;
+    gfx = u.kind === "trainer" ? `<div class="tip-gfx art section"><div class="spr">${img(r.img, "", r.name)}</div></div>`
+      : `<div class="tip-gfx section"><div class="spr inner">${img(r.img, "", r.name)}</div><div class="types">${label}</div></div>`;
     text = r.text;
   }
   const sell = u.kind === "species" ? `<span class="sv">$${sellValue(r, lv)}</span>` : u.kind === "item" && r.cost ? `<span class="sv">$${r.cost}</span>` : "";
@@ -221,8 +222,7 @@ function renderApp() {
   const b = state.build, tr = b.trainer && H.trainer.get(b.trainer);
   const bl = buildLinks();
   const hl = new Set();
-  const face = tr ? `<span class="face inner">${img(tr.img, "", tr.name)}</span>` : `<span class="face inner"></span>`;
-  const faceStyle = tr ? `style="--fx:${tr.face[0]};--fy:${tr.face[1]}"` : "";
+  const face = tr ? `<span class="face">${img(tr.img, "", tr.name)}</span>` : `<span class="face empty">+</span>`;
   const sets = D.sets.filter((s) => !s.hidden).map((s) =>
     `<button class="tog ${b.set === s.id ? "on" : ""}" data-act="set" data-id="${s.id}">${esc(s.name)}</button>`).join("");
   const order = [5, 4, 3, 2, 1, 0]; // top row then bottom row, front (slot 0 / 3) on the right
@@ -261,17 +261,20 @@ function renderApp() {
   }
   app.innerHTML = `<header class="top"><h1>Batomon Showdown</h1><div class="setsw">${sets}</div></header>
   <div class="wrap">
-    <section class="section trainer-row"><button data-act="trainer" ${faceStyle} class="facebtn">${face}</button>
-      <div class="tt">${tr ? `<div class="tn">${esc(tr.name)}</div><div>${esc(tr.text || "")}</div>` : `<div class="tn">Trainer</div>`}</div></section>
-    <section class="team-panel"><div class="ptitle">Team</div><div class="board">${slots}</div></section>
-    <section class="bench-panel"><div class="ptitle">Trinkets</div><div class="shelf">${shelf}</div></section>
+    <section class="panel"><button data-act="trainer" class="facebtn hpanel"><div class="hdr yellow tall">${tr ? esc(tr.name) : "Trainer"}</div>
+      <div class="trainer-body"><span class="portrait">${face}</span>${tr ? `<div class="desc section">${esc(tr.text || "")}</div>` : ""}</div></button></section>
+    <section class="panel hpanel"><div class="hdr">Team</div><div class="board">${slots}</div></section>
+    <section class="panel hpanel"><div class="hdr yellow">Trinkets</div><div class="shelf">${shelf}</div></section>
     ${bl.length ? `<section class="section">${on.length ? `<div class="lk-group"><h3>Linked</h3>${grouped(on)}</div>` : ""}
       ${off.length ? `<div class="lk-group off"><h3>Move to link</h3>${grouped(off)}</div>` : ""}</section>` : ""}
     ${fits}
   </div>`;
-  // trainer mugshot: centre the crop on mugshot_center (trainer .tres), sprite drawn at 1 game px = --u
+  // trainer mugshot: the game's 120x80 crop region (tr.crop), sprite drawn at 1 sprite px = 1 game px = --u
   const f = app.querySelector(".face img");
-  if (f && tr) { f.style.left = `calc(${20 - tr.face[0]} * var(--u))`; f.style.top = `calc(${20 - tr.face[1]} * var(--u))`; }
+  if (f && tr) {
+    f.style.left = `calc(${-tr.crop[0]} * var(--u))`; f.style.top = `calc(${-tr.crop[1]} * var(--u))`;
+    f.style.width = `calc(${tr.size[0]} * var(--u))`;
+  }
 }
 function inSet(key) {
   const u = unitOf(key);
