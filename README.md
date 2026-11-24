@@ -25,3 +25,9 @@ come from the game's board code (2 rows x 3 columns, slot 0 front-bottom; `utils
 All art, fonts and panels are the game's own files, copied unchanged and scaled with nearest-neighbour
 (`image-rendering: pixelated`, one game pixel = `--u`). Panels are the game's 9-slice textures with its margins;
 the tooltip frame is tinted per rarity like the game does. A missing file fails the build.
+Layout follows the game's scenes: headed panels = `monster_team_ui.tscn` / `trainer_ui.tscn` (panel, full-width
+red/yellow header bar, Guilty Treasure 12 label), trainer portrait = `trainer_portrait.gd` 120x80 crop, selector =
+`selector.tscn` corner brackets outside the object. Jinto / Pantra are the game's "regions" (data: `sets`).
+
+`render_check.js` runs app.js against a stub page that has only `document.querySelector`: keep load-time DOM access
+to that (static elements live in index.html, e.g. the search suggestions `#terms`).
