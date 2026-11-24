@@ -72,6 +72,17 @@ const chHtml = (l) => {
   return `<span class="ch"${c ? ` style="color:var(--s-${c})"` : ""}>${esc(chLabel(l))}</span>`;
 };
 
+// ---------- search terms per unit: the effect types its effects carry (channel, and verb + channel: "emits Burn") and
+// the interactions it takes part in (link label + position, either side); TERMS feeds the search box's suggestions
+const SEARCH = new Map(), TERMS = new Set();
+const addS = (k, t) => SEARCH.set(k, (SEARCH.get(k) || "") + " | " + t.toLowerCase());
+for (const [unit, , fs] of Object.values(D.effects)) for (const [fa, ch] of fs) { addS(unit, `${ch} ${fa} ${ch}`); TERMS.add(ch); }
+for (const l of L) {
+  const t = chLabel(l) + (l.pos ? " " + posLabel(l.pos) : "");
+  addS(l.pu, t); addS(l.cu, t); TERMS.add(chLabel(l));
+}
+document.querySelector("#terms").innerHTML = [...TERMS].sort().map((t) => `<option value="${esc(t)}">`).join("");
+
 // ---------- state (saved build)
 const SAVE = "bs.build.v1";
 function makeBuild() {
@@ -276,10 +287,10 @@ function renderApp() {
     f.style.width = `calc(${tr.size[0]} * var(--u))`;
   }
 }
-function inSet(key) {
+function inSet(key, s = state.build.set) {
   const u = unitOf(key);
   if (!u || !u.rec) return false;
-  const s = state.build.set, r = u.rec;
+  const r = u.rec;
   if (u.kind === "species") return r.set === s && (r.pool.length ? r.pool.includes(s) : true) && r.dex;
   if (u.kind === "trinket" || u.kind === "trainer") return !r.sets || !r.sets.length || r.sets.includes(s);
   return true;
@@ -292,30 +303,36 @@ function openSelector(target, slot) {
   const tab = target === "trinket" ? "trinket" : target === "trainer" ? "trainer" : "species";
   const cur = target === "slot" && state.build.team[slot] ? "species:" + state.build.team[slot].id : target === "trainer" && state.build.trainer ? "trainer:" + state.build.trainer : null;
   state.sel = { target, slot, tab, q: "", tiers: new Set(), types: new Set(), pick: cur, lv: (target === "slot" && state.build.team[slot]?.lv) || 1,
-    shiny: !!(target === "slot" && state.build.team[slot]?.shiny) };
+    shiny: !!(target === "slot" && state.build.team[slot]?.shiny), region: state.build.set };
   pushLayer("sel");
   renderSelector(true);
 }
 function selList() {
-  const s = state.sel, q = s.q.trim().toLowerCase();
+  const s = state.sel, terms = s.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const src = s.tab === "species" ? D.species : s.tab === "trinket" ? D.trinkets : s.tab === "item" ? D.items : D.trainers;
   return src.filter((r) => {
     const key = s.tab + ":" + r.id;
-    if (!inSet(key)) return false;
+    if (!inSet(key, s.tab === "species" ? s.region : undefined)) return false;
     if (s.tab === "trainer" && !r.pool) return false;
-    if (q && !(r.name.toLowerCase().includes(q) || (r.text || r.ab?.text || "").toLowerCase().includes(q))) return false;
+    if (terms.length) {
+      // every word must hit the name, the text (shiny's too), an effect type or an interaction
+      const hay = [r.name, r.text, r.ab?.text, r.shiny?.ab?.text, SEARCH.get(key)].filter(Boolean).join(" | ").toLowerCase();
+      if (!terms.every((t) => hay.includes(t))) return false;
+    }
     if (s.tiers.size && !s.tiers.has(r.tier)) return false;
     if (s.types.size && !(r.types || []).some((t) => s.types.has(t))) return false;
     return true;
   }).sort((a, b) => (a.tier || 0) - (b.tier || 0) || a.name.localeCompare(b.name));
 }
-function renderSelector(fresh) {
+function renderSelector(fresh, bodyOnly) {
   const s = state.sel;
   const scrollers = [".ovl-scroll", ".ovl-info"].map((q) => ovl.querySelector(q)?.scrollTop || 0);
   const inBuild = buildUnits();
   const tabs = TABS.filter(([k]) => s.target === "browse" || k === s.tab || (s.target === "slot" && k === "species"))
     .map(([k, n]) => `<button class="tog ${s.tab === k ? "on" : ""}" data-act="tab" data-id="${k}">${n}</button>`).join("");
   const tiers = s.tab === "trainer" ? "" : RKEY.map((r, i) => `<button class="fchip ${s.tiers.has(i + 1) ? "on" : ""}" data-act="tier" data-id="${i + 1}" style="background-image:url(${D.ui["rarity_" + r]})">${RARITY[i]}</button>`).join("");
+  const regions = s.tab !== "species" ? "" : D.sets.filter((x) => !x.hidden).map((x) =>
+    `<button class="tog ${s.region === x.id ? "on" : ""}" data-act="region" data-id="${x.id}">${esc(x.name)}</button>`).join("");
   const types = s.tab !== "species" ? "" : D.types.filter((t) => t.id !== "all" && t.id !== "null").map((t) =>
     `<button class="fchip ${s.types.has(t.id) ? "on" : ""}" data-act="type" data-id="${t.id}" style="background-image:url(${t.bg})">${esc(t.name)}</button>`).join("");
   const cells = selList().map((r) => {
@@ -333,10 +350,18 @@ function renderSelector(fresh) {
     foot = `<div class="ovl-foot">${s.target === "slot" && state.build.team[s.slot] ? `<button class="btn red" data-act="remove">Remove</button>` : ""}
       ${placeable ? `<button class="btn" data-act="place">${s.target === "trinket" ? "Add" : "Place"}</button>` : ""}</div>`;
   }
+  const body = `<div class="ovl-body ${s.pick ? "picked" : ""}"><div class="ovl-scroll"><div class="grid">${cells}</div></div>${info}</div>${foot}`;
+  if (bodyOnly && ovl.querySelector(".ovl-head")) {
+    // typing: refresh results only, so the search field (and its suggestion list) stays put
+    ovl.querySelectorAll(".ovl-body, .ovl-foot").forEach((el) => el.remove());
+    ovl.querySelector(".ovl").insertAdjacentHTML("beforeend", body);
+    return;
+  }
   ovl.innerHTML = `<div class="ovl" role="dialog" aria-modal="true">
-    <div class="ovl-head"><button class="btn red" data-act="close">Back</button>${tabs}<input class="search" type="search" placeholder="Search" value="${esc(s.q)}">
+    <div class="ovl-head"><button class="btn red" data-act="close">Back</button>${tabs}${regions ? `<div class="setsw">${regions}</div>` : ""}
+      <input class="search" type="search" list="terms" placeholder="Search" value="${esc(s.q)}">
       <div class="filters">${tiers}</div>${types ? `<div class="filters">${types}</div>` : ""}</div>
-    <div class="ovl-body ${s.pick ? "picked" : ""}"><div class="ovl-scroll"><div class="grid">${cells}</div></div>${info}</div>${foot}</div>`;
+    ${body}</div>`;
   ovl.classList.remove("hidden");
   [".ovl-scroll", ".ovl-info"].forEach((q, i) => { const el = ovl.querySelector(q); if (el) el.scrollTop = scrollers[i]; });
   const input = ovl.querySelector(".search");
@@ -413,6 +438,7 @@ ovl.addEventListener("click", (e) => {
   else if (a === "tier") { const n = +t.dataset.id; s.tiers.has(n) ? s.tiers.delete(n) : s.tiers.add(n); }
   else if (a === "type") { const n = t.dataset.id; s.types.has(n) ? s.types.delete(n) : s.types.add(n); }
   else if (a === "pick") { s.pick = s.pick === t.dataset.key ? null : t.dataset.key; }
+  else if (a === "region") { s.region = t.dataset.id; s.pick = null; }
   else if (a === "lv") s.lv = +t.dataset.id;
   else if (a === "shiny") s.shiny = !s.shiny;
   else if (a === "place") return place();
@@ -422,11 +448,7 @@ ovl.addEventListener("click", (e) => {
 ovl.addEventListener("input", (e) => {
   if (!e.target.classList.contains("search")) return;
   state.sel.q = e.target.value;
-  const pos = e.target.selectionStart;
-  renderSelector();
-  const i = ovl.querySelector(".search");
-  i.focus();
-  i.setSelectionRange(pos, pos);
+  renderSelector(false, true);
 });
 det.addEventListener("click", (e) => {
   const t = e.target.closest("[data-act],[data-open]");
