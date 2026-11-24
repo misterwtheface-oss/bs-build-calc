@@ -60,6 +60,8 @@ const iconOf = (key, shiny) => {
 const GATE = (g) => (g || []).map((x) => H.type.get(x)?.name || ({ t1: "Common", t2: "Uncommon", t3: "Rare", t4: "Super Rare",
   t5: "Legendary", t6: "Mythical", noability: "No-ability", cd5: "Slow (5 s+)", lv3: "Level 3+" })[x] || x).join(" / ");
 const chLabel = (l) => (l.kind === "type" ? `${GATE(l.gate)} ally` : l.ch);
+// item families (build_data.py: the shared effect class the item script extends)
+const FAM = [["potion", "Potion"], ["ticket", "Ticket"], ["gift", "Gift"], ["type_boost", "Type boost"], ["berry", "Berry"]];
 const POS = { adj: "adjacent", above: "above", behind: "behind", front: "in front", row: "same row" };
 const posLabel = (p) => (!p ? "" : p.startsWith("slot:") ? "slot " + p.slice(5).replace(/,/g, " / ") : POS[p] || p);
 const STATC = { Damage: "damage", Heal: "heal", Shield: "shield", Burn: "burn", Poison: "poison", Shock: "shock",
@@ -310,7 +312,7 @@ const TABS = [["species", "Monsters"], ["trinket", "Trinkets"], ["item", "Items"
 function openSelector(target, slot) {
   const tab = target === "trinket" || target === "item" || target === "trainer" ? target : "species";
   const cur = target === "slot" && state.build.team[slot] ? "species:" + state.build.team[slot].id : target === "trainer" && state.build.trainer ? "trainer:" + state.build.trainer : null;
-  state.sel = { target, slot, tab, q: "", tiers: new Set(), types: new Set(), mono: false, pick: cur, lv: (target === "slot" && state.build.team[slot]?.lv) || 1,
+  state.sel = { target, slot, tab, q: "", tiers: new Set(), types: new Set(), fams: new Set(), mono: false, pick: cur, lv: (target === "slot" && state.build.team[slot]?.lv) || 1,
     shiny: !!(target === "slot" && state.build.team[slot]?.shiny), region: state.build.set };
   pushLayer("sel");
   renderSelector(true);
@@ -330,6 +332,7 @@ function selList() {
     if (s.tiers.size && !s.tiers.has(r.tier)) return false;
     if (s.types.size && !(r.types || []).some((t) => s.types.has(t))) return false;
     if (s.mono && (r.types || []).length !== 1) return false;
+    if (s.tab === "item" && s.fams.size && !s.fams.has(r.fam)) return false;
     return true;
   }).sort((a, b) => (a.tier || 0) - (b.tier || 0) || a.name.localeCompare(b.name));
 }
@@ -342,6 +345,7 @@ function renderSelector(fresh, bodyOnly) {
   const tiers = s.tab === "trainer" ? "" : RKEY.map((r, i) => `<button class="fchip ${s.tiers.has(i + 1) ? "on" : ""}" data-act="tier" data-id="${i + 1}" style="background-image:url(${D.ui["rarity_" + r]})">${RARITY[i]}</button>`).join("");
   const regions = s.tab !== "species" ? "" : D.sets.filter((x) => !x.hidden).map((x) =>
     `<button class="tog ${s.region === x.id ? "on" : ""}" data-act="region" data-id="${x.id}">${esc(x.name)}</button>`).join("");
+  const fams = s.tab !== "item" ? "" : FAM.map(([id, n]) => `<button class="tog fmono ${s.fams.has(id) ? "on" : ""}" data-act="fam" data-id="${id}">${n}</button>`).join("");
   const types = s.tab !== "species" ? "" : `<button class="tog fmono ${s.mono ? "on" : ""}" data-act="mono">Mono</button>` + D.types.filter((t) => t.id !== "all" && t.id !== "null").map((t) =>
     `<button class="fchip ${s.types.has(t.id) ? "on" : ""}" data-act="type" data-id="${t.id}" style="background-image:url(${t.bg})">${esc(t.name)}</button>`).join("");
   const cells = selList().map((r) => {
@@ -369,7 +373,7 @@ function renderSelector(fresh, bodyOnly) {
   ovl.innerHTML = `<div class="ovl" role="dialog" aria-modal="true">
     <div class="ovl-head"><button class="btn red" data-act="close">Back</button>${tabs}${regions ? `<div class="setsw">${regions}</div>` : ""}
       <input class="search" type="search" list="terms" placeholder="Search" value="${esc(s.q)}">
-      <div class="filters">${tiers}</div>${types ? `<div class="filters">${types}</div>` : ""}</div>
+      <div class="filters">${tiers}</div>${types || fams ? `<div class="filters">${types || fams}</div>` : ""}</div>
     ${body}</div>`;
   ovl.classList.remove("hidden");
   [".ovl-scroll", ".ovl-info"].forEach((q, i) => { const el = ovl.querySelector(q); if (el) el.scrollTop = scrollers[i]; });
@@ -444,9 +448,10 @@ ovl.addEventListener("click", (e) => {
   if (t.dataset.open) return openDetail(t.dataset.open);
   const s = state.sel, a = t.dataset.act;
   if (a === "close") return closeTop();
-  if (a === "tab") { s.tab = t.dataset.id; s.pick = null; s.types.clear(); s.mono = false; }
+  if (a === "tab") { s.tab = t.dataset.id; s.pick = null; s.types.clear(); s.fams.clear(); s.mono = false; }
   else if (a === "tier") { const n = +t.dataset.id; s.tiers.has(n) ? s.tiers.delete(n) : s.tiers.add(n); }
   else if (a === "type") { const n = t.dataset.id; s.types.has(n) ? s.types.delete(n) : s.types.add(n); }
+  else if (a === "fam") { const n = t.dataset.id; s.fams.has(n) ? s.fams.delete(n) : s.fams.add(n); }
   else if (a === "mono") s.mono = !s.mono;
   else if (a === "pick") { s.pick = s.pick === t.dataset.key ? null : t.dataset.key; }
   else if (a === "region") { s.region = t.dataset.id; s.pick = null; }

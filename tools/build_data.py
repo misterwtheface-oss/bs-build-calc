@@ -130,6 +130,19 @@ def main():
 
     trinkets = held("trinket", E["trinkets"], "trinkets")
     items = held("item", E["items"], "items")
+    # item family = the shared effect class its script extends (game/items/common_effects/); one-off classes and
+    # plain ItemEffect get none. Names: keyword.potion / keyword.berry, item.effect.ticket / item.effect.gift
+    FAMILY = {"PotionEffect": "potion", "RollTieredItemEffect": "ticket", "GiftEffect": "gift",
+              "BuffToTypeItemEffect": "type_boost", "BerryEffect": "berry"}
+    for o in items:
+        script = os.path.join(REC, o["src"].replace("res://", "", 1).split(":")[0])  # first cited file = its own script
+        if not os.path.isfile(script):
+            errors.append("item %s: effect script not found (%s)" % (o["id"], o["src"]))
+            continue
+        with open(script, encoding="utf-8") as f:
+            ext = next((l.split()[1] for l in f if l.startswith("extends ")), "")
+        if ext in FAMILY:
+            o["fam"] = FAMILY[ext]
     def mugshot(t):
         """game/trainers/trainer_portrait.gd region_for(Kind.LARGE): a 120x80 window centred on mugshot_center,
         clamped inside the full sprite (UNSET centre -> x centre, top) -> [x, y, w, h] in sprite pixels, [sprite w, h]"""
