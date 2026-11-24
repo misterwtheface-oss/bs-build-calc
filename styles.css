@@ -149,6 +149,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   justify-content: center; font-size: calc(10 * var(--u)); color: #fff; text-transform: uppercase;
   text-shadow: var(--u) var(--u) 0 #404040; background: center / 100% 100% no-repeat; opacity: .45; }
 .fchip.on { opacity: 1; }
+.tog.fmono { flex: none; height: calc(15 * var(--u)); font-size: calc(10 * var(--u)); }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(48 * var(--u)), 1fr)); gap: calc(2 * var(--u)); }
 .cell { position: relative; display: flex; flex-direction: column; align-items: center; }
 .cell img { width: 100%; aspect-ratio: 1; object-fit: contain; }
