@@ -291,7 +291,8 @@ function inSet(key, s = state.build.set) {
   const u = unitOf(key);
   if (!u || !u.rec) return false;
   const r = u.rec;
-  if (u.kind === "species") return r.set === s && (r.pool.length ? r.pool.includes(s) : true) && r.dex;
+  // "common" species (all Mythicals, some shared rares) belong to every region
+  if (u.kind === "species") return (r.set === s || r.set === "common") && (r.pool.length ? r.pool.includes(s) : true) && r.dex;
   if (u.kind === "trinket" || u.kind === "trainer") return !r.sets || !r.sets.length || r.sets.includes(s);
   return true;
 }
