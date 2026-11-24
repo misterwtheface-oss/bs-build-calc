@@ -18,7 +18,7 @@ vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(APP, "data.js"), "utf8"), ctx);
 ctx.BS_DATA = ctx.window.BS_DATA;
 const src = fs.readFileSync(path.join(APP, "app.js"), "utf8").replace('"use strict";', "").replace("const D = window.BS_DATA;", "const D = BS_DATA;");
-vm.runInContext(src + "\n;globalThis.__app = { state, renderApp, openSelector, renderSelector, openDetail, renderDetail, TABS, D, layers, detStack };", ctx);
+vm.runInContext(src + "\n;globalThis.__app = { state, renderApp, openSelector, renderSelector, openDetail, renderDetail, openBuilds, TABS, D, layers, detStack };", ctx);
 const A = ctx.__app, D = A.D;
 
 const problems = [];
@@ -51,6 +51,14 @@ for (const b of builds) {
   A.state.build = JSON.parse(JSON.stringify(b));
   tryRender(`home ${b.set} ${b.team.map((x) => x && x.id).join(",")}`, () => { A.renderApp(); return els["#app"].innerHTML; });
 }
+// shop list: picks across every rarity (spread bars), the want selector, and the saved builds overlay
+reset(); A.state.build = JSON.parse(JSON.stringify(builds[1]));
+A.state.build.want = [1, 2, 3, 4, 5, 6].flatMap((t) => D.species.filter((x) => x.tier === t).slice(0, 7 - t).map((x) => x.id));
+tryRender("home shop list", () => { A.renderApp(); return els["#app"].innerHTML; });
+tryRender("selector want", () => { A.openSelector("want"); A.state.sel.pick = "species:" + A.state.build.want[0]; A.renderSelector(); return els["#overlay-root"].innerHTML; });
+reset(); store["bs.builds.v1"] = JSON.stringify(builds.slice(0, 4).map((b, i) => ({ name: "Build " + i, build: b })));
+tryRender("saved builds", () => { A.openBuilds(); return els["#overlay-root"].innerHTML; });
+A.state.bm = null;
 // shelf detail (Remove button) and the item selector opened from the shelf
 reset(); A.state.build = JSON.parse(JSON.stringify(builds[1]));
 tryRender("detail from items shelf", () => { A.openDetail("item:" + A.state.build.items[0], ["items", 0]); return els["#detail-overlay-root"].innerHTML; });

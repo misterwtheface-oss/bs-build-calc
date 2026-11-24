@@ -128,6 +128,28 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .chip { display: inline-flex; align-items: center; gap: var(--u); }
 .chip img { width: calc(16 * var(--u)); height: calc(16 * var(--u)); object-fit: contain; }
 .fits { display: flex; flex-wrap: wrap; gap: calc(2 * var(--u)); }
+/* shop list: one block per rarity, its spread bar (share of the largest rarity count) then the picks in priority order */
+.wlist { display: flex; flex-direction: column; gap: calc(3 * var(--u)); padding: calc(2 * var(--u)); }
+.spread { display: flex; align-items: center; gap: calc(3 * var(--u)); }
+.spread .rn { flex: none; width: calc(52 * var(--u)); }
+.spread .bar { flex: 1; height: calc(6 * var(--u)); background: var(--paper-2); }
+.spread .bar i { display: block; height: 100%; }
+.spread .cnt { flex: none; min-width: calc(10 * var(--u)); text-align: right; }
+.want { display: flex; align-items: center; gap: calc(2 * var(--u)); padding: var(--u) 0 0 calc(4 * var(--u)); }
+.want .pri { flex: none; width: calc(8 * var(--u)); color: var(--grey); }
+.want .chip { flex: 1; min-width: 0; }
+.want .tog { flex: none; min-width: calc(15 * var(--u)); font-family: system-ui, sans-serif; }
+.want .tog:disabled { opacity: .35; cursor: default; }
+.top .btn { flex: none; }
+/* saved builds overlay */
+.bm-list { display: flex; flex-direction: column; gap: calc(3 * var(--u)); max-width: calc(330 * var(--u)); margin: 0 auto; }
+.bm-row { display: flex; flex-wrap: wrap; align-items: center; gap: calc(2 * var(--u)) calc(4 * var(--u)); }
+.bm-row.cur .bm-name { color: var(--blue); }
+.bm-name { flex: 1 1 100%; font-family: var(--font-head); font-size: calc(9 * var(--u)); overflow-wrap: anywhere; }
+.bm-team { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--u); }
+.bm-team img { width: calc(20 * var(--u)); height: calc(20 * var(--u)); object-fit: contain; }
+.bm-team img.bm-tr { object-fit: cover; object-position: top; }
+.bm-act { display: flex; gap: calc(2 * var(--u)); }
 
 /* ---------- overlays */
 #overlay-root, #detail-overlay-root { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;

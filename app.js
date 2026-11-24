@@ -88,14 +88,20 @@ document.querySelector("#terms").innerHTML = [...TERMS].sort().map((t) => `<opti
 // ---------- state (saved build)
 const SAVE = "bs.build.v1";
 function makeBuild() {
-  return { set: "starter", trainer: null, team: [null, null, null, null, null, null], trinkets: [], items: [] };
+  return { name: "", set: "starter", trainer: null, team: [null, null, null, null, null, null], trinkets: [], items: [], want: [] };
 }
 const state = {
   build: Object.assign(makeBuild(), JSON.parse(localStorage.getItem(SAVE) || "null") || {}),
   sel: null,   // selector: {target: "slot"|"trinket"|"item"|"trainer", slot, tab, q, tiers:Set, types:Set, pick}
   det: null,   // detail: {key, lv, shiny, shelf: [list, index] when opened from a shelf}
+  bm: null,    // saved builds overlay: {name}
 };
 const save = () => localStorage.setItem(SAVE, JSON.stringify(state.build));
+// saved builds: [{name, build}], most recently saved first
+const BUILDS = "bs.builds.v1";
+const savedBuilds = () => JSON.parse(localStorage.getItem(BUILDS) || "[]");
+const storeBuilds = (list) => localStorage.setItem(BUILDS, JSON.stringify(list));
+const clone = (o) => JSON.parse(JSON.stringify(o));
 
 // ---------- board geometry (res://utils/utils.gd:4-10, 63-106): col = i % 3, row = floor(i / 3), row 1 on top;
 // "behind" = i + 1 and "in front" = i - 1 in the same row, "above" = i + 3; adjacent = grid distance 1
@@ -274,7 +280,19 @@ function renderApp() {
     const top = (kind, n) => [...score].filter(([k]) => k.startsWith(kind + ":")).sort((a, b) => b[1] - a[1]).slice(0, n).map(([k]) => chip(k)).join("");
     if (score.size) fits = `<section class="section o-links"><div class="lk-group"><h3>Fits this build</h3><div class="fits">${top("species", 10)}</div><div class="fits">${top("trinket", 6)}</div><div class="fits">${top("item", 6)}</div></div></section>`;
   }
-  app.innerHTML = `<header class="top"><h1>Batomon Showdown</h1><div class="setsw">${sets}</div></header>
+  // shop list: monsters to look out for, in priority order within each rarity; the bar = that rarity's share of the
+  // largest rarity count in the list
+  const want = b.want || [], wt = (id) => H.species.get(id)?.tier || 1;
+  const counts = [1, 2, 3, 4, 5, 6].map((t) => want.filter((id) => wt(id) === t).length), most = Math.max(...counts);
+  const tiers = counts.map((c, i) => [i + 1, c]).filter(([t, c]) => c || (want.length && t <= 5)).map(([t, c]) => {
+    const ids = want.filter((id) => wt(id) === t);
+    const rows = ids.map((id, n) => `<div class="want"><span class="pri">${n + 1}</span>${chip("species:" + id)}
+      <button class="tog fmono" data-act="w-up" data-id="${id}" ${n ? "" : "disabled"} aria-label="Up">▲</button><button class="tog fmono" data-act="w-down" data-id="${id}" ${n < ids.length - 1 ? "" : "disabled"} aria-label="Down">▼</button><button class="tog fmono" data-act="w-del" data-id="${id}" aria-label="Remove">✕</button></div>`).join("");
+    return `<div class="wtier"><div class="spread"><span class="rn r${t}">${RARITY[t - 1]}</span><span class="bar"><i style="width:${(c / most) * 100}%;background:var(--r${t})"></i></span><span class="cnt">${c}</span></div>${rows}</div>`;
+  }).join("");
+  const shop = `<section class="panel hpanel o-shelf"><div class="hdr yellow">Shop list</div><div class="wlist">${tiers}
+    <button class="tk add inner" data-act="w-add" aria-label="Add monster">+</button></div></section>`;
+  app.innerHTML = `<header class="top"><h1>Batomon Showdown</h1><div class="setsw">${sets}</div><button class="btn" data-act="builds">Builds</button></header>
   <div class="wrap">
     <div class="col col-side">
       <section class="panel"><button data-act="trainer" class="facebtn hpanel"><div class="hdr yellow tall">${tr ? esc(tr.name) : "Trainer"}</div>
@@ -284,6 +302,7 @@ function renderApp() {
     </div>
     <div class="col col-team"><section class="panel hpanel o-team"><div class="hdr">Team</div><div class="board">${slots}</div></section></div>
     <div class="col col-links">
+      ${shop}
       ${bl.length ? `<section class="section o-links">${on.length ? `<div class="lk-group"><h3>Linked</h3>${grouped(on)}</div>` : ""}
         ${off.length ? `<div class="lk-group off"><h3>Move to link</h3>${grouped(off)}</div>` : ""}</section>` : ""}
       ${fits}
@@ -340,6 +359,7 @@ function renderSelector(fresh, bodyOnly) {
   const s = state.sel;
   const scrollers = [".ovl-scroll", ".ovl-info"].map((q) => ovl.querySelector(q)?.scrollTop || 0);
   const inBuild = buildUnits();
+  const marked = s.target === "want" ? new Set((state.build.want || []).map((id) => "species:" + id)) : inBuild;
   const tabs = TABS.filter(([k]) => s.target === "browse" || k === s.tab || (s.target === "slot" && k === "species"))
     .map(([k, n]) => `<button class="tog ${s.tab === k ? "on" : ""}" data-act="tab" data-id="${k}">${n}</button>`).join("");
   const tiers = s.tab === "trainer" ? "" : RKEY.map((r, i) => `<button class="fchip ${s.tiers.has(i + 1) ? "on" : ""}" data-act="tier" data-id="${i + 1}" style="background-image:url(${D.ui["rarity_" + r]})">${RARITY[i]}</button>`).join("");
@@ -350,7 +370,7 @@ function renderSelector(fresh, bodyOnly) {
     `<button class="fchip ${s.types.has(t.id) ? "on" : ""}" data-act="type" data-id="${t.id}" style="background-image:url(${t.bg})">${esc(t.name)}</button>`).join("");
   const cells = selList().map((r) => {
     const key = s.tab + ":" + r.id;
-    return `<button class="cell inner ${s.pick === key ? "sel" : ""} ${inBuild.has(key) ? "inb" : ""}" data-act="pick" data-key="${key}">
+    return `<button class="cell inner ${s.pick === key ? "sel" : ""} ${marked.has(key) ? "inb" : ""}" data-act="pick" data-key="${key}">
       ${img(r.img, "", r.name)}<span class="nm r${r.tier || 1}">${esc(r.name)}</span></button>`;
   }).join("");
   let info = "", foot = "";
@@ -359,8 +379,9 @@ function renderSelector(fresh, bodyOnly) {
     const lvbar = isSp ? `<div class="lvbar">${[1, 2, 3, 4].map((n) => `<button class="tog lv ${s.lv === n ? "on" : ""}" data-act="lv" data-id="${n}">Lv ${n}</button>`).join("")}
       ${H.species.get(s.pick.slice(8)).shiny ? `<button class="tog lv ${s.shiny ? "on" : ""}" data-act="shiny">Shiny</button>` : ""}</div>` : "";
     info = `<div class="ovl-info">${tooltip(s.pick, s.lv, s.shiny)}${lvbar}${linkLists(s.pick, s.shiny)}</div>`;
-    const placeable = s.target !== "browse";
+    const placeable = s.target !== "browse" && s.target !== "want";
     foot = `<div class="ovl-foot">${s.target === "slot" && state.build.team[s.slot] ? `<button class="btn red" data-act="remove">Remove</button>` : ""}
+      ${s.target === "want" ? (marked.has(s.pick) ? `<button class="btn red" data-act="w-toggle">Remove</button>` : `<button class="btn" data-act="w-toggle">Add</button>`) : ""}
       ${placeable ? `<button class="btn" data-act="place">${s.target === "trinket" || s.target === "item" ? "Add" : "Place"}</button>` : ""}</div>`;
   }
   const body = `<div class="ovl-body ${s.pick ? "picked" : ""}"><div class="ovl-scroll"><div class="grid">${cells}</div></div>${info}</div>${foot}`;
@@ -394,6 +415,57 @@ function place() {
   renderApp();
 }
 
+// ---------- saved builds overlay (on #overlay-root, like the selector)
+function openBuilds() {
+  state.bm = { name: state.build.name || "" };
+  pushLayer("bm");
+  renderBuilds();
+}
+function renderBuilds() {
+  const rows = savedBuilds().map((e, i) => {
+    const tr = e.build.trainer && H.trainer.get(e.build.trainer);
+    const team = (e.build.team || []).filter((s) => s && H.species.get(s.id)).map((s) => img(iconOf("species:" + s.id, s.shiny), "", H.species.get(s.id).name));
+    return `<div class="bm-row section${e.name === state.build.name ? " cur" : ""}"><div class="bm-name">${esc(e.name)}</div>
+      <div class="bm-team">${tr ? img(tr.img, "bm-tr", tr.name) : ""}${team.join("")}</div>
+      <div class="bm-act"><button class="btn" data-act="bm-load" data-i="${i}">Load</button><button class="btn red" data-act="bm-del" data-i="${i}">Delete</button></div></div>`;
+  }).join("");
+  ovl.innerHTML = `<div class="ovl" role="dialog" aria-modal="true">
+    <div class="ovl-head"><button class="btn red" data-act="close">Back</button>
+      <input class="search bm-input" type="text" placeholder="Build name" value="${esc(state.bm.name)}">
+      <button class="btn" data-act="bm-save">Save</button><button class="btn yellow" data-act="bm-new">New</button></div>
+    <div class="ovl-body"><div class="ovl-scroll"><div class="bm-list">${rows}</div></div></div></div>`;
+  ovl.classList.remove("hidden");
+}
+function buildsClick(a, t) {
+  const list = savedBuilds();
+  if (a === "bm-save") {
+    // the same name overwrites that saved build
+    const name = state.bm.name.trim() || `Build ${list.length + 1}`;
+    state.build.name = name;
+    storeBuilds([{ name, build: clone(state.build) }, ...list.filter((e) => e.name !== name)]);
+    save();
+    state.bm.name = name;
+    return renderBuilds();
+  }
+  if (a === "bm-load") {
+    state.build = Object.assign(makeBuild(), clone(list[+t.dataset.i].build));
+    save(); return closeTop();
+  }
+  if (a === "bm-del") {
+    const e = list[+t.dataset.i];
+    if (!confirm(`Delete "${e.name}"?`)) return;
+    list.splice(+t.dataset.i, 1); storeBuilds(list);
+    if (state.build.name === e.name) { state.build.name = ""; save(); }
+    return renderBuilds();
+  }
+  if (a === "bm-new") {
+    const b = state.build, empty = !b.trainer && !b.team.some(Boolean) && !b.trinkets.length && !b.items.length && !(b.want || []).length;
+    if (!empty && !confirm("Start a new build? Changes since the last save are lost.")) return;
+    state.build = Object.assign(makeBuild(), { set: b.set });
+    save(); return closeTop();
+  }
+}
+
 // ---------- detail overlay
 const detStack = []; // detail pages opened from one another: Back walks back through them
 function openDetail(key, shelf) {
@@ -424,7 +496,7 @@ function closeLayer() {
     if (state.det) return renderDetail(true);
     det.classList.add("hidden"); det.innerHTML = "";
   }
-  else if (top === "sel") { ovl.classList.add("hidden"); ovl.innerHTML = ""; state.sel = null; }
+  else if (top === "sel" || top === "bm") { ovl.classList.add("hidden"); ovl.innerHTML = ""; state.sel = null; state.bm = null; renderApp(); }
 }
 function closeTop() { if (layers.length) history.back(); }
 addEventListener("popstate", () => { if (layers.length) closeLayer(); });
@@ -440,6 +512,16 @@ app.addEventListener("click", (e) => {
   else if (a === "slot") openSelector("slot", +t.dataset.slot);
   else if (a === "trainer") openSelector("trainer");
   else if (a === "tk-add") openSelector(t.dataset.kind);
+  else if (a === "builds") openBuilds();
+  else if (a === "w-add") openSelector("want");
+  else if (a === "w-del") { b.want = b.want.filter((x) => x !== t.dataset.id); save(); renderApp(); }
+  else if (a === "w-up" || a === "w-down") {
+    // swap with the next entry of the same rarity: priority is kept per rarity
+    const id = t.dataset.id, tier = H.species.get(id).tier, w = b.want, i = w.indexOf(id), step = a === "w-up" ? -1 : 1;
+    let j = i + step;
+    while (j >= 0 && j < w.length && H.species.get(w[j]).tier !== tier) j += step;
+    if (j >= 0 && j < w.length) { [w[i], w[j]] = [w[j], w[i]]; save(); renderApp(); }
+  }
   else if (a === "tk") { const list = t.dataset.list, i = +t.dataset.i; openDetail((list === "items" ? "item:" : "trinket:") + b[list][i], [list, i]); }
 });
 ovl.addEventListener("click", (e) => {
@@ -448,6 +530,7 @@ ovl.addEventListener("click", (e) => {
   if (t.dataset.open) return openDetail(t.dataset.open);
   const s = state.sel, a = t.dataset.act;
   if (a === "close") return closeTop();
+  if (state.bm) return buildsClick(a, t);
   if (a === "tab") { s.tab = t.dataset.id; s.pick = null; s.types.clear(); s.fams.clear(); s.mono = false; }
   else if (a === "tier") { const n = +t.dataset.id; s.tiers.has(n) ? s.tiers.delete(n) : s.tiers.add(n); }
   else if (a === "type") { const n = t.dataset.id; s.types.has(n) ? s.types.delete(n) : s.types.add(n); }
@@ -459,9 +542,15 @@ ovl.addEventListener("click", (e) => {
   else if (a === "shiny") s.shiny = !s.shiny;
   else if (a === "place") return place();
   else if (a === "remove") { state.build.team[s.slot] = null; save(); closeTop(); return renderApp(); }
+  else if (a === "w-toggle") {
+    const b = state.build, id = s.pick.slice(8);
+    b.want = (b.want || []).includes(id) ? b.want.filter((x) => x !== id) : [...(b.want || []), id];
+    save();
+  }
   renderSelector();
 });
 ovl.addEventListener("input", (e) => {
+  if (state.bm) { state.bm.name = e.target.value; return; }
   if (!e.target.classList.contains("search")) return;
   state.sel.q = e.target.value;
   renderSelector(false, true);
