@@ -4,7 +4,7 @@
 - [ ] User review of the link tags (`_bs_extract/data/entities_audit.md` lists every channel; tags in `tools/tags/facets.py`), one effect at a time like the HMD Dude audit. Known soft spots: Zenith Stone boosts every stat gain (no permanent / battle-only split yet), Level 3+ gates are not checked, Cast links from team-wide speed effects are broad.
 - [ ] Ability text in the game's own wording: the loc templates (`monster.ability.*`) need each script's `get_description` values; the planner shows the extract's plain text with the chosen level's numbers.
 - [ ] Battle numbers on the board (team HP for the day, cooldowns after speed buffs, output per cast) from 01_battle.md formulas.
-- [ ] Bench, items used and the shop: not modelled yet.
+- [ ] Bench and the shop: not modelled yet.
 - [ ] Real-phone check of the board, selector and detail at 390 px.
 
 ## Log
@@ -14,3 +14,4 @@
 - 2026-11-23 Monster selector: region toggle (Jinto / Pantra = the game's "regions", loc `tutorial.set_select.*`), starting on the build's region; another region's monster can still be placed (Smuggler, Portal Potion). Search matches every word against name, ability text (shiny's too), effect types (each facet's channel, and verb + channel such as "emits Burn") and interaction types (link labels such as "Toxic ally", with positions such as "adjacent"); the box suggests those terms (datalist). Typing refreshes only the results, so the field and its suggestions stay open.
 - 2026-11-23 Monster selector: Mono toggle at the head of the type chips keeps only single-typed monsters (the game's term, loc `trainer.passive.monotype_convert`); with type chips on it gives pure-type lists (e.g. Mono + Fire). Resets with the tab like the type chips. render_check 1691 / 0.
 - 2026-11-23 Fix: the region filter dropped every "common" species (shared by both regions in the game's pool), so no Mythical showed. Common species now count for both regions, still gated by their pool: Aerophim, Cosmivore, Faebloom, Goldora, Omnichrome, Riglet, Rigalord plus Boomagon, Gildshell, Shogapede, Dracana, Ignit, Talonite, Celestia, Flarilisk, Wishwash, Basilord, Dragonarch, Onsetra, Saberhorn. Pantra 79 / Jinto 83 monsters. render_check 1691 / 0.
+- 2026-11-23 Items shelf (items used), built like the Trinkets shelf: + opens the selector on the Items tab (Add), a tile opens the item with Remove; items join the build's links and "Fits this build" suggests items too. Desktop (>= 1000 px) fits the build on one screen: side column (trainer, trinkets, items), team board sized so both rows fit the window height, links column; a column scrolls on its own only if it overflows. Phones unchanged (trainer, team, trinkets, items, links). render_check 1693 / 0.

@@ -39,17 +39,23 @@ function tryRender(where, fn) {
 const reset = () => { A.layers.length = 0; A.detStack.length = 0; A.state.sel = null; A.state.det = null; };
 
 // home: empty, then each set with a full team of that set, all trinkets of the set, a trainer
-const builds = [{ set: "starter", trainer: null, team: [null, null, null, null, null, null], trinkets: [] }];
+const builds = [{ set: "starter", trainer: null, team: [null, null, null, null, null, null], trinkets: [], items: [] }];
 for (const s of D.sets) {
   const sp = D.species.filter((x) => x.set === s.id);
   for (let i = 0; i < sp.length; i += 6) builds.push({ set: s.id, trainer: D.trainers[i % D.trainers.length].id,
     team: [0, 1, 2, 3, 4, 5].map((k) => (sp[i + k] ? { id: sp[i + k].id, lv: (k % 4) + 1, shiny: k % 2 === 1 } : null)),
-    trinkets: D.trinkets.filter((t) => !t.sets || t.sets.includes(s.id)).slice((i / 6) * 5 % 90, (i / 6) * 5 % 90 + 5).map((t) => t.id) });
+    trinkets: D.trinkets.filter((t) => !t.sets || t.sets.includes(s.id)).slice((i / 6) * 5 % 90, (i / 6) * 5 % 90 + 5).map((t) => t.id),
+    items: D.items.slice((i / 6) * 3 % 50, (i / 6) * 3 % 50 + 3).map((t) => t.id) });
 }
 for (const b of builds) {
   A.state.build = JSON.parse(JSON.stringify(b));
   tryRender(`home ${b.set} ${b.team.map((x) => x && x.id).join(",")}`, () => { A.renderApp(); return els["#app"].innerHTML; });
 }
+// shelf detail (Remove button) and the item selector opened from the shelf
+reset(); A.state.build = JSON.parse(JSON.stringify(builds[1]));
+tryRender("detail from items shelf", () => { A.openDetail("item:" + A.state.build.items[0], ["items", 0]); return els["#detail-overlay-root"].innerHTML; });
+reset();
+tryRender("selector items shelf", () => { A.openSelector("item"); A.state.sel.pick = "item:" + D.items[0].id; A.renderSelector(); return els["#overlay-root"].innerHTML; });
 // selector: every tab, every pick, each level and shiny
 A.state.build = JSON.parse(JSON.stringify(builds[1]));
 for (const [tab] of A.TABS) {

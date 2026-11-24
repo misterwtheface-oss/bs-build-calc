@@ -86,6 +86,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .setsw { display: flex; gap: var(--u); }
 .wrap { max-width: calc(330 * var(--u)); margin: 0 auto; padding: calc(4 * var(--u)) calc(4 * var(--u))
   calc(env(safe-area-inset-bottom) + 12 * var(--u)); display: flex; flex-direction: column; gap: calc(4 * var(--u)); }
+/* columns are a desktop grouping only: on phones their sections stack in one column, team right under the trainer */
+.col { display: contents; }
+.o-team { order: 1; } .o-shelf { order: 2; } .o-links { order: 3; }
 /* trainer card (trainer_ui.tscn): header, portrait, description; the portrait sits beside the text when there is room */
 .trainer-body { display: flex; flex-wrap: wrap; justify-content: center; gap: calc(2 * var(--u)); }
 .trainer-body .desc { flex: 1 1 calc(116 * var(--u)); display: flex; align-items: center; justify-content: center; min-height: calc(84 * var(--u)); }
@@ -203,6 +206,19 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .links .row .ch { min-width: calc(60 * var(--u)); }
 .links .row .pos { color: var(--grey); }
 
+/* desktop: the whole build on one screen. Side column (trainer, trinkets, items), team board sized so its two rows
+   fit the window height, links column takes the rest; a column scrolls on its own only if it overflows */
+@media (min-width: 1000px) {
+  body { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+  #app { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .wrap { --slot: min(calc(110 * var(--u)), calc((100dvh - 92 * var(--u)) / 2)); flex: 1; min-height: 0; width: 100%;
+    max-width: calc(900 * var(--u)); padding-bottom: calc(4 * var(--u)); display: grid; align-items: start;
+    grid-template-columns: calc(136 * var(--u)) minmax(0, calc(3 * var(--slot) + 16 * var(--u))) minmax(calc(150 * var(--u)), 1fr);
+    grid-template-rows: 100%; }
+  .col { display: flex; flex-direction: column; gap: calc(4 * var(--u)); max-height: 100%; min-height: 0;
+    overflow-y: auto; overscroll-behavior: contain; }
+  .col-side .trainer-body .desc { min-height: 0; }
+}
 @media (min-width: 700px) {
   .ovl { width: min(94vw, 1100px); height: 88vh; max-height: 88vh; }
   #overlay-root .ovl-body.picked { flex-direction: row; }

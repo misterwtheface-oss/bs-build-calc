@@ -86,12 +86,12 @@ document.querySelector("#terms").innerHTML = [...TERMS].sort().map((t) => `<opti
 // ---------- state (saved build)
 const SAVE = "bs.build.v1";
 function makeBuild() {
-  return { set: "starter", trainer: null, team: [null, null, null, null, null, null], trinkets: [] };
+  return { set: "starter", trainer: null, team: [null, null, null, null, null, null], trinkets: [], items: [] };
 }
 const state = {
   build: Object.assign(makeBuild(), JSON.parse(localStorage.getItem(SAVE) || "null") || {}),
-  sel: null,   // selector: {target: "slot"|"trinket"|"trainer", slot, tab, q, tiers:Set, types:Set, pick}
-  det: null,   // detail: {key, lv, shiny}
+  sel: null,   // selector: {target: "slot"|"trinket"|"item"|"trainer", slot, tab, q, tiers:Set, types:Set, pick}
+  det: null,   // detail: {key, lv, shiny, shelf: [list, index] when opened from a shelf}
 };
 const save = () => localStorage.setItem(SAVE, JSON.stringify(state.build));
 
@@ -114,6 +114,7 @@ function buildUnits() {
   const add = (k, v) => (m.get(k) || m.set(k, []).get(k)).push(v);
   b.team.forEach((s, i) => s && add("species:" + s.id, { slot: i, shiny: !!s.shiny, lv: s.lv || 1 }));
   b.trinkets.forEach((id) => add("trinket:" + id, {}));
+  b.items.forEach((id) => add("item:" + id, {}));
   if (b.trainer) add("trainer:" + b.trainer, {});
   return m;
 }
@@ -246,8 +247,9 @@ function renderApp() {
     const mk = markers.has(i) && SLOT_MARK[i] ? img(D.ui[SLOT_MARK[i]], "mk") : "";
     return `<button class="slot" data-act="slot" data-slot="${i}">${img(iconOf("species:" + s.id, s.shiny), "mon", sp.name)}<span class="lvb">${s.lv || 1}</span>${mk}</button>`;
   }).join("");
-  const shelf = b.trinkets.map((id, i) => `<button class="tk inner" data-act="tk" data-i="${i}">${img(H.trinket.get(id).img, "", H.trinket.get(id).name)}</button>`).join("") +
-    `<button class="tk add inner" data-act="tk-add" aria-label="Add trinket">+</button>`;
+  // shelves (trinkets owned, items used): one tile per copy, + opens the selector on that tab
+  const shelf = (list, kind) => b[list].map((id, i) => `<button class="tk inner" data-act="tk" data-list="${list}" data-i="${i}">${img(H[kind].get(id).img, "", H[kind].get(id).name)}</button>`).join("") +
+    `<button class="tk add inner" data-act="tk-add" data-kind="${kind}" aria-label="Add ${kind}">+</button>`;
   const on = bl.filter((x) => x.ok), off = bl.filter((x) => !x.ok);
   // grouped by the unit that receives: consumer <- channel (position): providers
   const grouped = (arr) => {
@@ -268,17 +270,22 @@ function renderApp() {
       score.set(e.other, (score.get(e.other) || 0) + e.score);
     }
     const top = (kind, n) => [...score].filter(([k]) => k.startsWith(kind + ":")).sort((a, b) => b[1] - a[1]).slice(0, n).map(([k]) => chip(k)).join("");
-    if (score.size) fits = `<section class="section"><div class="lk-group"><h3>Fits this build</h3><div class="fits">${top("species", 10)}</div><div class="fits">${top("trinket", 6)}</div></div></section>`;
+    if (score.size) fits = `<section class="section o-links"><div class="lk-group"><h3>Fits this build</h3><div class="fits">${top("species", 10)}</div><div class="fits">${top("trinket", 6)}</div><div class="fits">${top("item", 6)}</div></div></section>`;
   }
   app.innerHTML = `<header class="top"><h1>Batomon Showdown</h1><div class="setsw">${sets}</div></header>
   <div class="wrap">
-    <section class="panel"><button data-act="trainer" class="facebtn hpanel"><div class="hdr yellow tall">${tr ? esc(tr.name) : "Trainer"}</div>
-      <div class="trainer-body"><span class="portrait">${face}</span>${tr ? `<div class="desc section">${esc(tr.text || "")}</div>` : ""}</div></button></section>
-    <section class="panel hpanel"><div class="hdr">Team</div><div class="board">${slots}</div></section>
-    <section class="panel hpanel"><div class="hdr yellow">Trinkets</div><div class="shelf">${shelf}</div></section>
-    ${bl.length ? `<section class="section">${on.length ? `<div class="lk-group"><h3>Linked</h3>${grouped(on)}</div>` : ""}
-      ${off.length ? `<div class="lk-group off"><h3>Move to link</h3>${grouped(off)}</div>` : ""}</section>` : ""}
-    ${fits}
+    <div class="col col-side">
+      <section class="panel"><button data-act="trainer" class="facebtn hpanel"><div class="hdr yellow tall">${tr ? esc(tr.name) : "Trainer"}</div>
+        <div class="trainer-body"><span class="portrait">${face}</span>${tr ? `<div class="desc section">${esc(tr.text || "")}</div>` : ""}</div></button></section>
+      <section class="panel hpanel o-shelf"><div class="hdr yellow">Trinkets</div><div class="shelf">${shelf("trinkets", "trinket")}</div></section>
+      <section class="panel hpanel o-shelf"><div class="hdr">Items</div><div class="shelf">${shelf("items", "item")}</div></section>
+    </div>
+    <div class="col col-team"><section class="panel hpanel o-team"><div class="hdr">Team</div><div class="board">${slots}</div></section></div>
+    <div class="col col-links">
+      ${bl.length ? `<section class="section o-links">${on.length ? `<div class="lk-group"><h3>Linked</h3>${grouped(on)}</div>` : ""}
+        ${off.length ? `<div class="lk-group off"><h3>Move to link</h3>${grouped(off)}</div>` : ""}</section>` : ""}
+      ${fits}
+    </div>
   </div>`;
   // trainer mugshot: the game's 120x80 crop region (tr.crop), sprite drawn at 1 sprite px = 1 game px = --u
   const f = app.querySelector(".face img");
@@ -301,7 +308,7 @@ function inSet(key, s = state.build.set) {
 const ovl = document.querySelector("#overlay-root"), det = document.querySelector("#detail-overlay-root");
 const TABS = [["species", "Monsters"], ["trinket", "Trinkets"], ["item", "Items"], ["trainer", "Trainers"]];
 function openSelector(target, slot) {
-  const tab = target === "trinket" ? "trinket" : target === "trainer" ? "trainer" : "species";
+  const tab = target === "trinket" || target === "item" || target === "trainer" ? target : "species";
   const cur = target === "slot" && state.build.team[slot] ? "species:" + state.build.team[slot].id : target === "trainer" && state.build.trainer ? "trainer:" + state.build.trainer : null;
   state.sel = { target, slot, tab, q: "", tiers: new Set(), types: new Set(), mono: false, pick: cur, lv: (target === "slot" && state.build.team[slot]?.lv) || 1,
     shiny: !!(target === "slot" && state.build.team[slot]?.shiny), region: state.build.set };
@@ -348,9 +355,9 @@ function renderSelector(fresh, bodyOnly) {
     const lvbar = isSp ? `<div class="lvbar">${[1, 2, 3, 4].map((n) => `<button class="tog lv ${s.lv === n ? "on" : ""}" data-act="lv" data-id="${n}">Lv ${n}</button>`).join("")}
       ${H.species.get(s.pick.slice(8)).shiny ? `<button class="tog lv ${s.shiny ? "on" : ""}" data-act="shiny">Shiny</button>` : ""}</div>` : "";
     info = `<div class="ovl-info">${tooltip(s.pick, s.lv, s.shiny)}${lvbar}${linkLists(s.pick, s.shiny)}</div>`;
-    const placeable = s.target !== "browse" && !s.pick.startsWith("item:");
+    const placeable = s.target !== "browse";
     foot = `<div class="ovl-foot">${s.target === "slot" && state.build.team[s.slot] ? `<button class="btn red" data-act="remove">Remove</button>` : ""}
-      ${placeable ? `<button class="btn" data-act="place">${s.target === "trinket" ? "Add" : "Place"}</button>` : ""}</div>`;
+      ${placeable ? `<button class="btn" data-act="place">${s.target === "trinket" || s.target === "item" ? "Add" : "Place"}</button>` : ""}</div>`;
   }
   const body = `<div class="ovl-body ${s.pick ? "picked" : ""}"><div class="ovl-scroll"><div class="grid">${cells}</div></div>${info}</div>${foot}`;
   if (bodyOnly && ovl.querySelector(".ovl-head")) {
@@ -376,6 +383,7 @@ function place() {
   const [kind, id] = s.pick.split(":");
   if (s.target === "slot" && kind === "species") b.team[s.slot] = { id, lv: s.lv, shiny: s.shiny };
   else if (s.target === "trinket" && kind === "trinket") b.trinkets.push(id);
+  else if (s.target === "item" && kind === "item") b.items.push(id);
   else if (s.target === "trainer" && kind === "trainer") b.trainer = id;
   save();
   closeTop();
@@ -427,8 +435,8 @@ app.addEventListener("click", (e) => {
   if (a === "set") { b.set = t.dataset.id; save(); renderApp(); }
   else if (a === "slot") openSelector("slot", +t.dataset.slot);
   else if (a === "trainer") openSelector("trainer");
-  else if (a === "tk-add") openSelector("trinket");
-  else if (a === "tk") openDetail("trinket:" + b.trinkets[+t.dataset.i], +t.dataset.i);
+  else if (a === "tk-add") openSelector(t.dataset.kind);
+  else if (a === "tk") { const list = t.dataset.list, i = +t.dataset.i; openDetail((list === "items" ? "item:" : "trinket:") + b[list][i], [list, i]); }
 });
 ovl.addEventListener("click", (e) => {
   const t = e.target.closest("[data-act],[data-open]");
@@ -459,7 +467,7 @@ det.addEventListener("click", (e) => {
   if (t.dataset.open) { state.det.scroll = det.querySelector(".detail-main").scrollTop; return openDetail(t.dataset.open); }
   const d = state.det, a = t.dataset.act;
   if (a === "close") return closeTop();
-  if (a === "tk-remove") { state.build.trinkets.splice(d.shelf, 1); save(); renderApp(); detStack.length = 0; return closeTop(); }
+  if (a === "tk-remove") { state.build[d.shelf[0]].splice(d.shelf[1], 1); save(); renderApp(); detStack.length = 0; return closeTop(); }
   if (a === "dlv") d.lv = +t.dataset.id;
   else if (a === "dshiny") d.shiny = !d.shiny;
   renderDetail();
