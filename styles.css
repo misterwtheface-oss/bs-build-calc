@@ -87,7 +87,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .wrap { max-width: calc(330 * var(--u)); margin: 0 auto; padding: calc(4 * var(--u)) calc(4 * var(--u))
   calc(env(safe-area-inset-bottom) + 12 * var(--u)); display: flex; flex-direction: column; gap: calc(4 * var(--u)); }
 /* trainer card (trainer_ui.tscn): header, portrait, description; the portrait sits beside the text when there is room */
-.trainer-body { display: flex; flex-wrap: wrap; gap: calc(2 * var(--u)); }
+.trainer-body { display: flex; flex-wrap: wrap; justify-content: center; gap: calc(2 * var(--u)); }
 .trainer-body .desc { flex: 1 1 calc(116 * var(--u)); display: flex; align-items: center; justify-content: center; min-height: calc(84 * var(--u)); }
 /* trainer_portrait.gd Kind.LARGE: a 120x80 crop of the full sprite (region from build_data.py), drawn 1:1 in a
    trainer_portrait_frame 9-slice (margin 3); clip-path = portrait_corner_clip.gdshader (one texel off each corner) */
@@ -107,9 +107,6 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .slot .lvb { position: absolute; left: calc(3 * var(--u)); bottom: calc(2 * var(--u)); font-family: var(--font-num);
   font-size: calc(8 * var(--u)); color: #fff; -webkit-text-stroke: calc(1 * var(--u)) #404040; paint-order: stroke; }
 .slot .mk { position: absolute; right: calc(2 * var(--u)); top: calc(2 * var(--u)); width: calc(10 * var(--u)); }
-.slot.hl::before { content: ""; position: absolute; inset: calc(-2 * var(--u)); pointer-events: none;
-  border: solid transparent; border-width: calc(8 * var(--u));
-  border-image: var(--t-selector) 8 / calc(8 * var(--u)) stretch; }
 .slot.dim > img.mon { filter: grayscale(1) opacity(.45); }
 .front { position: absolute; right: 0; top: calc(-8 * var(--u)); font-size: calc(8 * var(--u)); color: var(--grey); }
 .shelf { display: flex; flex-wrap: wrap; gap: calc(4 * var(--u)); }
@@ -140,7 +137,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .ovl-head .grow { flex: 1; }
 .ovl-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
 .ovl-scroll, .ovl-info, .detail-main { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-.ovl-scroll { flex: 1; padding: calc(3 * var(--u)); }
+.ovl-scroll { flex: 1; padding: calc(4 * var(--u)); }
 .ovl-info { flex: 1; border-top: calc(2 * var(--u)) solid var(--outline); padding: calc(3 * var(--u)); background: var(--paper-2); }
 .ovl-foot { flex-shrink: 0; display: flex; gap: calc(3 * var(--u)); justify-content: flex-end;
   padding: calc(3 * var(--u)) calc(4 * var(--u)) calc(env(safe-area-inset-bottom) + 3 * var(--u)); background: var(--paper-2); }
@@ -153,12 +150,22 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   text-shadow: var(--u) var(--u) 0 #404040; background: center / 100% 100% no-repeat; opacity: .45; }
 .fchip.on { opacity: 1; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(48 * var(--u)), 1fr)); gap: calc(2 * var(--u)); }
-.cell { position: relative; display: flex; flex-direction: column; align-items: center; padding: var(--u); }
+.cell { position: relative; display: flex; flex-direction: column; align-items: center; }
 .cell img { width: 100%; aspect-ratio: 1; object-fit: contain; }
 .cell .nm { font-size: calc(9 * var(--u)); text-align: center; line-height: 1; min-height: calc(9 * var(--u));
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.cell.sel::before, .cell.inb::before { content: ""; position: absolute; inset: 0; pointer-events: none;
-  border: solid transparent; border-width: calc(8 * var(--u)); border-image: var(--t-selector) 8 / calc(8 * var(--u)) stretch; }
+/* selector (game/ui/common/selector.tscn): corner brackets only (NinePatch margin 11) set 4 px outside the object,
+   pulsing out to 6 px ("hovered", 0.6 s); drawn here at half scale so it rings the tile and never covers it.
+   --bx/--by = the tile's own border, so the offset is measured from its outer edge */
+@property --so { syntax: "<length>"; inherits: false; initial-value: 0px; }
+.cell.sel::before, .cell.inb::before { content: ""; position: absolute; pointer-events: none; z-index: 1; --so: calc(2 * var(--u));
+  top: calc(-4 * var(--u) - var(--so)); left: calc(-4 * var(--u) - var(--so));
+  right: calc(-5 * var(--u) - var(--so)); bottom: calc(-5 * var(--u) - var(--so));
+  border: solid transparent; border-width: calc(11 * var(--u) / 2); border-image: var(--t-selector) 11 / calc(11 * var(--u) / 2) stretch; }
+.cell.sel::before { animation: selpulse .6s step-end infinite; }
+@keyframes selpulse { 0% { --so: calc(2 * var(--u)); } 17% { --so: calc(2.5 * var(--u)); } 33% { --so: calc(3 * var(--u)); }
+  67% { --so: calc(2.5 * var(--u)); } 83%, 100% { --so: calc(2 * var(--u)); } }
+@media (prefers-reduced-motion: reduce) { .cell.sel::before { animation: none; } }
 .cell.inb::before { opacity: .45; }
 .cell.sel img { filter: brightness(1.12); }
 .r1 { color: var(--r1); } .r2 { color: var(--r2); } .r3 { color: var(--r3); } .r4 { color: var(--r4); } .r5 { color: var(--r5); } .r6 { color: var(--r6); }
