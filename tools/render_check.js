@@ -56,7 +56,12 @@ reset(); A.state.build = JSON.parse(JSON.stringify(builds[1]));
 A.state.build.want = [1, 2, 3, 4, 5, 6].flatMap((t) => D.species.filter((x) => x.tier === t).slice(0, 7 - t).map((x) => x.id));
 tryRender("home shop list", () => { A.renderApp(); return els["#app"].innerHTML; });
 tryRender("selector want", () => { A.openSelector("want"); A.state.sel.pick = "species:" + A.state.build.want[0]; A.renderSelector(); return els["#overlay-root"].innerHTML; });
-reset(); store["bs.builds.v1"] = JSON.stringify(builds.slice(0, 4).map((b, i) => ({ name: "Build " + i, build: b })));
+reset(); store["bs.builds.v1"] = JSON.stringify(builds.slice(0, 4).map((b, i) => ({ name: "Build " + i, build: i === 3 ? { ...b, sets: D.sets.map((x) => x.id) } : b })));
+// a multi-region build (Smuggler): both regions on the home page and in the selector
+A.state.build = { ...JSON.parse(JSON.stringify(builds[1])), sets: D.sets.filter((x) => !x.hidden).map((x) => x.id) }; delete A.state.build.set;
+tryRender("home multi-region", () => { A.renderApp(); return els["#app"].innerHTML; });
+tryRender("selector multi-region", () => { A.openSelector("slot", 0); return els["#overlay-root"].innerHTML; });
+reset();
 tryRender("saved builds", () => { A.openBuilds(); return els["#overlay-root"].innerHTML; });
 A.state.bm = null;
 // shelf detail (Remove button) and the item selector opened from the shelf

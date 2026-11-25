@@ -88,7 +88,7 @@ document.querySelector("#terms").innerHTML = [...TERMS].sort().map((t) => `<opti
 // ---------- state (saved build)
 const SAVE = "bs.build.v1";
 function makeBuild() {
-  return { name: "", set: "starter", trainer: null, team: [null, null, null, null, null, null], trinkets: [], items: [], want: [] };
+  return { name: "", sets: ["starter"], trainer: null, team: [null, null, null, null, null, null], trinkets: [], items: [], want: [] };
 }
 const state = {
   build: Object.assign(makeBuild(), JSON.parse(localStorage.getItem(SAVE) || "null") || {}),
@@ -102,6 +102,12 @@ const BUILDS = "bs.builds.v1";
 const savedBuilds = () => JSON.parse(localStorage.getItem(BUILDS) || "[]");
 const storeBuilds = (list) => localStorage.setItem(BUILDS, JSON.stringify(list));
 const clone = (o) => JSON.parse(JSON.stringify(o));
+// a build's regions: one, or several (Smuggler packs, Portal Potion); builds saved before this kept one in `set`
+const regsOf = (b) => (b.sets && b.sets.length ? b.sets : [b.set || "starter"]);
+// toggle one region in a list, never leaving it empty
+const regOrder = (regs) => [...regs].sort((x, y) => D.sets.findIndex((s) => s.id === x) - D.sets.findIndex((s) => s.id === y));
+const toggleReg = (regs, id) => regOrder(regs.includes(id) ? (regs.length > 1 ? regs.filter((x) => x !== id) : regs) : [...regs, id]);
+const regName = (id) => H.set.get(id)?.name || id;
 
 // ---------- board geometry (res://utils/utils.gd:4-10, 63-106): col = i % 3, row = floor(i / 3), row 1 on top;
 // "behind" = i + 1 and "in front" = i - 1 in the same row, "above" = i + 3; adjacent = grid distance 1
@@ -244,7 +250,7 @@ function renderApp() {
   const hl = new Set();
   const face = tr ? `<span class="face">${img(tr.img, "", tr.name)}</span>` : `<span class="face empty">+</span>`;
   const sets = D.sets.filter((s) => !s.hidden).map((s) =>
-    `<button class="tog ${b.set === s.id ? "on" : ""}" data-act="set" data-id="${s.id}">${esc(s.name)}</button>`).join("");
+    `<button class="tog ${regsOf(b).includes(s.id) ? "on" : ""}" data-act="set" data-id="${s.id}">${esc(s.name)}</button>`).join("");
   const order = [5, 4, 3, 2, 1, 0]; // top row then bottom row, front (slot 0 / 3) on the right
   const markers = new Set();
   for (const l of bl) if (l.l.pos && l.l.pos.startsWith("slot:")) l.l.pos.slice(5).split(",").forEach((s) => markers.add(+s));
@@ -315,13 +321,13 @@ function renderApp() {
     f.style.width = `calc(${tr.size[0]} * var(--u))`;
   }
 }
-function inSet(key, s = state.build.set) {
+function inSet(key, regs = regsOf(state.build)) {
   const u = unitOf(key);
   if (!u || !u.rec) return false;
   const r = u.rec;
   // "common" species (all Mythicals, some shared rares) belong to every region
-  if (u.kind === "species") return (r.set === s || r.set === "common") && (r.pool.length ? r.pool.includes(s) : true) && r.dex;
-  if (u.kind === "trinket" || u.kind === "trainer") return !r.sets || !r.sets.length || r.sets.includes(s);
+  if (u.kind === "species") return r.dex && regs.some((s) => (r.set === s || r.set === "common") && (r.pool.length ? r.pool.includes(s) : true));
+  if (u.kind === "trinket" || u.kind === "trainer") return !r.sets || !r.sets.length || regs.some((s) => r.sets.includes(s));
   return true;
 }
 
@@ -332,7 +338,7 @@ function openSelector(target, slot) {
   const tab = target === "trinket" || target === "item" || target === "trainer" ? target : "species";
   const cur = target === "slot" && state.build.team[slot] ? "species:" + state.build.team[slot].id : target === "trainer" && state.build.trainer ? "trainer:" + state.build.trainer : null;
   state.sel = { target, slot, tab, q: "", tiers: new Set(), types: new Set(), fams: new Set(), mono: false, pick: cur, lv: (target === "slot" && state.build.team[slot]?.lv) || 1,
-    shiny: !!(target === "slot" && state.build.team[slot]?.shiny), region: state.build.set };
+    shiny: !!(target === "slot" && state.build.team[slot]?.shiny), regions: [...regsOf(state.build)] };
   pushLayer("sel");
   renderSelector(true);
 }
@@ -341,7 +347,7 @@ function selList() {
   const src = s.tab === "species" ? D.species : s.tab === "trinket" ? D.trinkets : s.tab === "item" ? D.items : D.trainers;
   return src.filter((r) => {
     const key = s.tab + ":" + r.id;
-    if (!inSet(key, s.tab === "species" ? s.region : undefined)) return false;
+    if (!inSet(key, s.tab === "species" ? s.regions : undefined)) return false;
     if (s.tab === "trainer" && !r.pool) return false;
     if (terms.length) {
       // every word must hit the name, the text (shiny's too), an effect type or an interaction
@@ -364,7 +370,7 @@ function renderSelector(fresh, bodyOnly) {
     .map(([k, n]) => `<button class="tog ${s.tab === k ? "on" : ""}" data-act="tab" data-id="${k}">${n}</button>`).join("");
   const tiers = s.tab === "trainer" ? "" : RKEY.map((r, i) => `<button class="fchip ${s.tiers.has(i + 1) ? "on" : ""}" data-act="tier" data-id="${i + 1}" style="background-image:url(${D.ui["rarity_" + r]})">${RARITY[i]}</button>`).join("");
   const regions = s.tab !== "species" ? "" : D.sets.filter((x) => !x.hidden).map((x) =>
-    `<button class="tog ${s.region === x.id ? "on" : ""}" data-act="region" data-id="${x.id}">${esc(x.name)}</button>`).join("");
+    `<button class="tog ${s.regions.includes(x.id) ? "on" : ""}" data-act="region" data-id="${x.id}">${esc(x.name)}</button>`).join("");
   const fams = s.tab !== "item" ? "" : FAM.map(([id, n]) => `<button class="tog fmono ${s.fams.has(id) ? "on" : ""}" data-act="fam" data-id="${id}">${n}</button>`).join("");
   const types = s.tab !== "species" ? "" : `<button class="tog fmono ${s.mono ? "on" : ""}" data-act="mono">Mono</button>` + D.types.filter((t) => t.id !== "all" && t.id !== "null").map((t) =>
     `<button class="fchip ${s.types.has(t.id) ? "on" : ""}" data-act="type" data-id="${t.id}" style="background-image:url(${t.bg})">${esc(t.name)}</button>`).join("");
@@ -425,7 +431,7 @@ function renderBuilds() {
   const rows = savedBuilds().map((e, i) => {
     const tr = e.build.trainer && H.trainer.get(e.build.trainer);
     const team = (e.build.team || []).filter((s) => s && H.species.get(s.id)).map((s) => img(iconOf("species:" + s.id, s.shiny), "", H.species.get(s.id).name));
-    return `<div class="bm-row section${e.name === state.build.name ? " cur" : ""}"><div class="bm-name">${esc(e.name)}</div>
+    return `<div class="bm-row section${e.name === state.build.name ? " cur" : ""}"><div class="bm-name">${esc(e.name)}<span class="bm-reg">${regOrder(regsOf(e.build)).map(regName).join(" + ")}</span></div>
       <div class="bm-team">${tr ? img(tr.img, "bm-tr", tr.name) : ""}${team.join("")}</div>
       <div class="bm-act"><button class="btn" data-act="bm-load" data-i="${i}">Load</button><button class="btn red" data-act="bm-del" data-i="${i}">Delete</button></div></div>`;
   }).join("");
@@ -461,7 +467,7 @@ function buildsClick(a, t) {
   if (a === "bm-new") {
     const b = state.build, empty = !b.trainer && !b.team.some(Boolean) && !b.trinkets.length && !b.items.length && !(b.want || []).length;
     if (!empty && !confirm("Start a new build? Changes since the last save are lost.")) return;
-    state.build = Object.assign(makeBuild(), { set: b.set });
+    state.build = Object.assign(makeBuild(), { sets: [...regsOf(b)] });
     save(); return closeTop();
   }
 }
@@ -508,7 +514,7 @@ app.addEventListener("click", (e) => {
   if (!t) return;
   if (t.dataset.open) return openDetail(t.dataset.open);
   const a = t.dataset.act, b = state.build;
-  if (a === "set") { b.set = t.dataset.id; save(); renderApp(); }
+  if (a === "set") { b.sets = toggleReg(regsOf(b), t.dataset.id); delete b.set; save(); renderApp(); }
   else if (a === "slot") openSelector("slot", +t.dataset.slot);
   else if (a === "trainer") openSelector("trainer");
   else if (a === "tk-add") openSelector(t.dataset.kind);
@@ -537,7 +543,7 @@ ovl.addEventListener("click", (e) => {
   else if (a === "fam") { const n = t.dataset.id; s.fams.has(n) ? s.fams.delete(n) : s.fams.add(n); }
   else if (a === "mono") s.mono = !s.mono;
   else if (a === "pick") { s.pick = s.pick === t.dataset.key ? null : t.dataset.key; }
-  else if (a === "region") { s.region = t.dataset.id; s.pick = null; }
+  else if (a === "region") { s.regions = toggleReg(s.regions, t.dataset.id); s.pick = null; }
   else if (a === "lv") s.lv = +t.dataset.id;
   else if (a === "shiny") s.shiny = !s.shiny;
   else if (a === "place") return place();
