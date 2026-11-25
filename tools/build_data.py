@@ -174,7 +174,7 @@ def main():
              for e in E["edges"] if e["kind"] == "synergy"]
     graph = [[e["kind"], e["a"], e["b"]] for e in E["edges"] if e["kind"] in ("evolves", "grants")]
 
-    data = {"types": types, "sets": E["sets"], "keywords": E["keywords"], "species": species, "trinkets": trinkets,
+    data = {"types": types, "sets": sorted(E["sets"], key=lambda s: s["unlock_wins"]), "keywords": E["keywords"], "species": species, "trinkets": trinkets,
             "items": items, "trainers": trainers, "events": E["events"], "effects": effects, "links": links,
             "edges": edges, "graph": graph, "rarity": E["synergy"]["rarity"], "ui": ui}
     if errors:

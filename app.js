@@ -108,6 +108,13 @@ const regsOf = (b) => (b.sets && b.sets.length ? b.sets : [b.set || "starter"]);
 const regOrder = (regs) => [...regs].sort((x, y) => D.sets.findIndex((s) => s.id === x) - D.sets.findIndex((s) => s.id === y));
 const toggleReg = (regs, id) => regOrder(regs.includes(id) ? (regs.length > 1 ? regs.filter((x) => x !== id) : regs) : [...regs, id]);
 const regName = (id) => H.set.get(id)?.name || id;
+// a region-only trainer (Black Belt = Jinto, Musician = Pantra) keeps the build inside its regions
+const fitTrainer = (regs, tid) => {
+  const need = (tid && H.trainer.get(tid)?.sets) || [];
+  if (!need.length) return regs;
+  const keep = regs.filter((r) => need.includes(r));
+  return regOrder(keep.length ? keep : need);
+};
 
 // ---------- board geometry (res://utils/utils.gd:4-10, 63-106): col = i % 3, row = floor(i / 3), row 1 on top;
 // "behind" = i + 1 and "in front" = i - 1 in the same row, "above" = i + 3; adjacent = grid distance 1
@@ -347,7 +354,8 @@ function selList() {
   const src = s.tab === "species" ? D.species : s.tab === "trinket" ? D.trinkets : s.tab === "item" ? D.items : D.trainers;
   return src.filter((r) => {
     const key = s.tab + ":" + r.id;
-    if (!inSet(key, s.tab === "species" ? s.regions : undefined)) return false;
+    // trainers are listed whatever the region; picking one moves the build to its region (place)
+    if (s.tab !== "trainer" && !inSet(key, s.tab === "species" ? s.regions : undefined)) return false;
     if (s.tab === "trainer" && !r.pool) return false;
     if (terms.length) {
       // every word must hit the name, the text (shiny's too), an effect type or an interaction
@@ -415,7 +423,7 @@ function place() {
   if (s.target === "slot" && kind === "species") b.team[s.slot] = { id, lv: s.lv, shiny: s.shiny };
   else if (s.target === "trinket" && kind === "trinket") b.trinkets.push(id);
   else if (s.target === "item" && kind === "item") b.items.push(id);
-  else if (s.target === "trainer" && kind === "trainer") b.trainer = id;
+  else if (s.target === "trainer" && kind === "trainer") { b.trainer = id; b.sets = fitTrainer(regsOf(b), id); delete b.set; }
   save();
   closeTop();
   renderApp();
@@ -514,7 +522,7 @@ app.addEventListener("click", (e) => {
   if (!t) return;
   if (t.dataset.open) return openDetail(t.dataset.open);
   const a = t.dataset.act, b = state.build;
-  if (a === "set") { b.sets = toggleReg(regsOf(b), t.dataset.id); delete b.set; save(); renderApp(); }
+  if (a === "set") { b.sets = fitTrainer(toggleReg(regsOf(b), t.dataset.id), b.trainer); delete b.set; save(); renderApp(); }
   else if (a === "slot") openSelector("slot", +t.dataset.slot);
   else if (a === "trainer") openSelector("trainer");
   else if (a === "tk-add") openSelector(t.dataset.kind);
